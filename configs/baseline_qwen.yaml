@@ -1,0 +1,31 @@
+paths:
+  dataset_json: ../datasets/public_test/public_test.json
+  video_root: ../datasets
+  output_csv: ../outputs/submission_baseline_qwen.csv
+  answer_json: ../datasets/public_test/public_test_with_answers.json
+  audit_json: ../outputs/audit_baseline_qwen.json
+
+model:
+  model_name_or_path: Qwen/Qwen2.5-VL-7B-Instruct
+  trust_remote_code: true
+  device_map: auto
+  torch_dtype: bfloat16
+  attn_implementation: null
+
+sampling:
+  num_frames: 10
+  max_side: 960
+
+runtime:
+  seed: 42
+  default_answer: A
+  time_limit_sec: 30
+  use_logits_only: false
+  checkpoint_every_n: 5
+  print_every_n: 1
+  batch_size: 4
+  clear_cuda_cache_on_each_sample: true
+
+prompt:
+  system_hint: >-
+    Bạn là một trợ lý thông minh chuyên giải quyết các câu hỏi liên quan đến video. Bạn sẽ được cung cấp một video và một câu hỏi liên quan đến nội dung của video đó. Nhiệm vụ của bạn là phân tích thông tin thị giác trong video và trả lời câu hỏi dựa trên những gì bạn thấy. Bạn chỉ cần trả lời bằng một ký tự duy nhất, đó là đáp án đúng nhất cho câu hỏi đã cho. Hãy tập trung vào việc hiểu nội dung của video và chọn đáp án chính xác nhất dựa trên thông tin đó.

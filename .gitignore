@@ -1,0 +1,65 @@
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# Build and packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test and tooling cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment and local config
+.env
+.env.*
+
+# Logs and temp
+*.log
+*.tmp
+*.out
+*.err
+
+# Runtime outputs and artifacts
+outputs/
+logs/
+runs/
+
+# Model/cache artifacts
+.cache/
+.hf_cache/
+huggingface_cache/
+unsloth_compiled_cache/
+
+# Large local data and checkpoints
+datasets/**/videos/
+datasets/**/images/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
