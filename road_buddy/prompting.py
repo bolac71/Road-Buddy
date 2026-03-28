@@ -8,6 +8,7 @@ _PROMPT_TEMPLATE = (
     "{system_hint}\n\n"
     "Dựa trên các khung hình trích từ video dashcam, hãy trả lời câu hỏi trắc nghiệm sau.\n"
     "Chỉ được chọn DUY NHẤT một đáp án đúng nhất.\n\n"
+    "{query_context}"
     "Câu hỏi: {question}\n\n"
     "Lựa chọn:\n{choices}\n\n"
     "Bắt buộc: dòng đầu tiên chỉ được ghi DUY NHẤT một ký tự in hoa A/B/C/D, không giải thích.\n"
@@ -15,9 +16,30 @@ _PROMPT_TEMPLATE = (
 )
 
 
-def build_prompt(question: str, choices: Iterable[str], system_hint: str) -> str:
+def build_prompt(
+    question: str,
+    choices: Iterable[str],
+    system_hint: str,
+    target_objects: list[str] | None = None,
+    temporal_hints: list[str] | None = None,
+) -> str:
     choices_text = "\n".join(str(c) for c in choices)
-    return _PROMPT_TEMPLATE.format(system_hint=system_hint, question=question, choices=choices_text)
+    context_parts: list[str] = []
+    if target_objects:
+        context_parts.append(f"Đối tượng cần chú ý: {', '.join(target_objects)}")
+    if temporal_hints:
+        context_parts.append(f"Gợi ý thời điểm quan sát: {', '.join(temporal_hints)}")
+
+    query_context = ""
+    if context_parts:
+        query_context = "Thông tin bổ sung:\n" + "\n".join(context_parts) + "\n\n"
+
+    return _PROMPT_TEMPLATE.format(
+        system_hint=system_hint,
+        query_context=query_context,
+        question=question,
+        choices=choices_text,
+    )
 
 
 def extract_choice_letters(choices: Iterable[str]) -> list[str]:

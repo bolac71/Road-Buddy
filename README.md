@@ -113,3 +113,8 @@ sbatch scripts/run_baseline.slurm
 - Frame sampling đang là uniform theo tổng số frame (sampling.num_frames).
 - Chưa fine-tune, đang dùng zero-shot Qwen-VL.
 - Đây là nền để mở rộng thêm các hướng như frame scoring theo motion, caching, ensembling và hậu xử lý theo luật.
+
+## Analize audit
+python scripts/analyze_audit.py \
+    --audit  outputs/11231/audit.json \
+    --output outputs/11231/analysis

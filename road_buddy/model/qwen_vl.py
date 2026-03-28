@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
-import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoModelForImageTextToText, AutoProcessor
 
@@ -69,22 +68,6 @@ class QwenVLRunner:
             raise RuntimeError("Model is not loaded")
         return next(self.model.parameters()).device
 
-    def _encode_choice_tokens(self, choice_letters: list[str]) -> dict[str, int]:
-        token_map: dict[str, int] = {}
-        for letter in choice_letters:
-            ids = self.processor.tokenizer(letter, add_special_tokens=False).input_ids
-            if ids and len(ids) == 1:
-                token_map[letter] = ids[0]
-                continue
-
-            ids = self.processor.tokenizer(f" {letter}", add_special_tokens=False).input_ids
-            if ids and len(ids) == 1:
-                token_map[letter] = ids[0]
-
-        if not token_map:
-            raise ValueError("Cannot build token map for choices")
-        return token_map
-
     def _prepare_inputs(self, prompt: str, images: list[Image.Image]) -> dict[str, torch.Tensor]:
         content = [{"type": "image", "image": img} for img in images]
         content.append({"type": "text", "text": prompt})
@@ -114,47 +97,6 @@ class QwenVLRunner:
             else:
                 prepared[k] = v.to(self.device)
         return prepared
-
-    def _predict_logits_only(
-        self,
-        prompt: str,
-        images: list[Image.Image],
-        choice_letters: list[str],
-    ) -> PredictResult:
-        if not choice_letters:
-            raise ValueError("choice_letters is empty")
-
-        token_map = self._encode_choice_tokens(choice_letters)
-        token_ids = torch.tensor([token_map[c] for c in token_map], device=self.device)
-        id_to_letter = {v: k for k, v in token_map.items()}
-
-        inputs = self._prepare_inputs(prompt, images)
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=1,
-                output_scores=True,
-                return_dict_in_generate=True,
-                do_sample=False,
-                pad_token_id=self.processor.tokenizer.eos_token_id,
-            )
-
-        if not outputs.scores:
-            raise RuntimeError("Model did not return generation scores")
-
-        next_token_logits = outputs.scores[0][0]
-        option_logits = torch.index_select(next_token_logits, 0, token_ids)
-        option_probs = F.softmax(option_logits, dim=-1)
-
-        best_idx = int(torch.argmax(option_probs).item())
-        best_token = int(token_ids[best_idx].item())
-        answer = id_to_letter[best_token]
-
-        probs: dict[str, float] = {}
-        for i, token_id in enumerate(token_ids.tolist()):
-            probs[id_to_letter[int(token_id)]] = float(option_probs[i].item())
-
-        return PredictResult(answer=answer, probs=probs, raw_text="", source="logits_only")
 
     def _predict_generate(
         self,
@@ -191,25 +133,18 @@ class QwenVLRunner:
         choices: list[str],
         images: list[Image.Image],
         system_hint: str,
-        use_logits_only: bool,
+        target_objects: list[str] | None = None,
+        temporal_hints: list[str] | None = None,
     ) -> PredictResult:
         if self.model is None or self.processor is None:
             raise RuntimeError("Model must be loaded before predict")
 
-        prompt = build_prompt(question=question, choices=choices, system_hint=system_hint)
+        prompt = build_prompt(
+            question=question,
+            choices=choices,
+            system_hint=system_hint,
+            target_objects=target_objects,
+            temporal_hints=temporal_hints,
+        )
         choice_letters = [c[0] for c in choices if c]
-
-        if use_logits_only:
-            try:
-                return self._predict_logits_only(prompt, images, choice_letters)
-            except Exception as e:
-                result = self._predict_generate(prompt, images, choice_letters)
-                if result.source:
-                    result.source = f"{result.source}_after_logits_fallback"
-                else:
-                    result.source = "generate_after_logits_fallback"
-                if result.raw_text:
-                    result.raw_text = f"[logits_error:{type(e).__name__}] {result.raw_text}"
-                return result
-
         return self._predict_generate(prompt, images, choice_letters)

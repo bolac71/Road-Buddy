@@ -23,6 +23,7 @@ from road_buddy.dataio import (
 )
 from road_buddy.model.qwen_vl import QwenVLRunner
 from road_buddy.prompting import extract_choice_letters
+from road_buddy.query_aware import analyze_question, select_query_aware_frames
 from road_buddy.video import sample_video_frames
 
 
@@ -90,7 +91,6 @@ def _save_audit_payload(
             "video_root": config.paths.video_root,
             "output_csv": config.paths.output_csv,
             "model_name_or_path": config.model.model_name_or_path,
-            "use_logits_only": config.runtime.use_logits_only,
             "interrupted": interrupted,
             "eval_total": eval_stats.total if eval_stats else 0,
             "eval_correct": eval_stats.correct if eval_stats else 0,
@@ -176,7 +176,8 @@ def run_inference(config: AppConfig) -> InferenceSummary:
                     choices=item["choices"],
                     images=item["selected_images"],
                     system_hint=config.prompt.system_hint,
-                    use_logits_only=False,
+                    target_objects=item["query_target_objects"],
+                    temporal_hints=item["query_temporal_hints"],
                 )
                 answer = result.answer if result.answer in item["choice_letters"] else item["choice_letters"][0]
                 raw_text = result.raw_text
@@ -212,6 +213,11 @@ def run_inference(config: AppConfig) -> InferenceSummary:
                     "raw_text": raw_text,
                     "probs": probs,
                     "pred_source": pred_source,
+                    "query_intent": item["query_intent"],
+                    "query_target_objects": item["query_target_objects"],
+                    "query_temporal_hints": item["query_temporal_hints"],
+                    "selected_frame_indices": item["selected_frame_indices"],
+                    "selected_frame_scores": item["selected_frame_scores"],
                     "gt_label": gt_label,
                     "is_correct": is_correct,
                     "latency_sec": round(float(latency), 6),
@@ -263,6 +269,11 @@ def run_inference(config: AppConfig) -> InferenceSummary:
                         "raw_text": "",
                         "probs": {},
                         "pred_source": "default_no_choice",
+                        "query_intent": "unknown",
+                        "query_target_objects": [],
+                        "query_temporal_hints": [],
+                        "selected_frame_indices": [],
+                        "selected_frame_scores": [],
                         "gt_label": gt_label,
                         "is_correct": is_correct,
                         "latency_sec": 0.0,
@@ -275,13 +286,34 @@ def run_inference(config: AppConfig) -> InferenceSummary:
 
             video_abs = resolve_video_path(config.paths.video_root, video_rel)
             try:
+                query_info = analyze_question(question)
+                candidate_multiplier = max(1, int(config.sampling.candidate_frame_multiplier))
+                candidate_num_frames = max(
+                    int(config.sampling.num_frames),
+                    int(config.sampling.num_frames) * candidate_multiplier,
+                )
                 selected_images = sample_video_frames(
                     video_abs,
-                    num_frames=config.sampling.num_frames,
+                    num_frames=candidate_num_frames,
                     max_side=config.sampling.max_side,
                 )
                 if not selected_images:
                     raise ValueError("no_frames_from_video")
+
+                selected_indices: list[int] = list(range(len(selected_images)))
+                selected_scores: list[float] = [1.0] * len(selected_images)
+                if config.sampling.query_aware_enabled:
+                    selected_images, selected_indices, selected_scores = select_query_aware_frames(
+                        selected_images,
+                        query_info,
+                        max_frames=config.sampling.num_frames,
+                    )
+                    if not selected_images:
+                        raise ValueError("no_query_aware_frames")
+                else:
+                    selected_images = selected_images[: config.sampling.num_frames]
+                    selected_indices = selected_indices[: len(selected_images)]
+                    selected_scores = selected_scores[: len(selected_images)]
             except Exception as e:
                 rows.append({"id": qid, "answer": choice_letters[0]})
                 gt_label, is_correct = _eval_fields(qid, choice_letters[0])
@@ -297,6 +329,11 @@ def run_inference(config: AppConfig) -> InferenceSummary:
                         "raw_text": "",
                         "probs": {},
                         "pred_source": "default_on_frame_extract_error",
+                        "query_intent": "unknown",
+                        "query_target_objects": [],
+                        "query_temporal_hints": [],
+                        "selected_frame_indices": [],
+                        "selected_frame_scores": [],
                         "gt_label": gt_label,
                         "is_correct": is_correct,
                         "latency_sec": 0.0,
@@ -317,6 +354,11 @@ def run_inference(config: AppConfig) -> InferenceSummary:
                     "video_rel": video_rel,
                     "video_abs": video_abs,
                     "selected_images": selected_images,
+                    "query_intent": query_info.intent.value,
+                    "query_target_objects": query_info.target_objects,
+                    "query_temporal_hints": query_info.temporal_hints,
+                    "selected_frame_indices": selected_indices,
+                    "selected_frame_scores": selected_scores,
                 }
             )
 

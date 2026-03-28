@@ -6,7 +6,7 @@ paths:
   audit_json: ../outputs/audit_baseline_qwen.json
 
 model:
-  model_name_or_path: Qwen/Qwen2.5-VL-7B-Instruct
+  model_name_or_path: Qwen/Qwen3-VL-8B-Instruct
   trust_remote_code: true
   device_map: auto
   torch_dtype: bfloat16
@@ -15,12 +15,13 @@ model:
 sampling:
   num_frames: 10
   max_side: 960
+  query_aware_enabled: true
+  candidate_frame_multiplier: 3
 
 runtime:
   seed: 42
   default_answer: A
   time_limit_sec: 30
-  use_logits_only: false
   checkpoint_every_n: 5
   print_every_n: 1
   batch_size: 4

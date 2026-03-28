@@ -29,6 +29,8 @@ class ModelConfig:
 class SamplingConfig:
     num_frames: int = 10
     max_side: int = 960
+    query_aware_enabled: bool = True
+    candidate_frame_multiplier: int = 3
 
 
 @dataclass
@@ -36,7 +38,6 @@ class RuntimeConfig:
     seed: int = 42
     default_answer: str = "A"
     time_limit_sec: float = 30.0
-    use_logits_only: bool = True
     checkpoint_every_n: int = 10
     print_every_n: int = 1
     batch_size: int = 1
@@ -110,12 +111,13 @@ def load_config(config_path: str) -> AppConfig:
         sampling=SamplingConfig(
             num_frames=int(sampling.get("num_frames", 10)),
             max_side=int(sampling.get("max_side", 960)),
+            query_aware_enabled=bool(sampling.get("query_aware_enabled", True)),
+            candidate_frame_multiplier=int(sampling.get("candidate_frame_multiplier", 3)),
         ),
         runtime=RuntimeConfig(
             seed=int(runtime.get("seed", 42)),
             default_answer=str(runtime.get("default_answer", "A")),
             time_limit_sec=float(runtime.get("time_limit_sec", 30.0)),
-            use_logits_only=bool(runtime.get("use_logits_only", True)),
             checkpoint_every_n=int(runtime.get("checkpoint_every_n", 10)),
             print_every_n=int(runtime.get("print_every_n", 1)),
             batch_size=int(runtime.get("batch_size", 1)),
