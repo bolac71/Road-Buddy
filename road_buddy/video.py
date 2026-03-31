@@ -56,11 +56,7 @@ def extract_frames_1fps_from_video(video_path: str, max_frames: int = 10) -> lis
     return frames_bgr
 
 
-def select_topk_frames_multiframe(
-    annotated_pil_frames: list[Image.Image],
-    num_boxes_list: list[int],
-    top_k: int = 10,
-) -> list[Image.Image]:
+def select_topk_frames_multiframe(annotated_pil_frames: list[Image.Image], num_boxes_list: list[int], top_k: int = 10) -> list[Image.Image]:
     if not annotated_pil_frames:
         return []
 

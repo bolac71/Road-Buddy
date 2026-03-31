@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import torch
@@ -8,6 +9,20 @@ from transformers import AutoModelForImageTextToText, AutoProcessor
 
 from road_buddy.config import ModelConfig
 from road_buddy.prompting import build_prompt, extract_final_letter
+
+class _SuppressNoiseFilter(logging.Filter):
+    _SUPPRESSED = (
+        "Kwargs passed to `processor.__call__`",
+        "The following generation flags are not valid",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(s in msg for s in self._SUPPRESSED)
+
+
+_noise_filter = _SuppressNoiseFilter()
+logging.getLogger("transformers").addFilter(_noise_filter)
 
 
 _DTYPE_MAP = {
@@ -59,13 +74,13 @@ class QwenVLRunner:
 
         if getattr(self.processor, "image_processor", None) is None:
             raise RuntimeError(
-                "Model/processor hiện tại không hỗ trợ đầu vào ảnh-video. "
+                "Model/processor hien tai khong ho tro dau vao anh-video. "
             )
 
     @property
     def device(self) -> torch.device:
         if self.model is None:
-            raise RuntimeError("Model is not loaded")
+            raise RuntimeError("Model chua duoc load, khong the truy cap device")
         return next(self.model.parameters()).device
 
     def _prepare_inputs(self, prompt: str, images: list[Image.Image]) -> dict[str, torch.Tensor]:
@@ -73,17 +88,22 @@ class QwenVLRunner:
         content.append({"type": "text", "text": prompt})
         messages = [{"role": "user", "content": content}]
 
+        template_kwargs: dict = {
+            "tokenize": False,
+            "add_generation_prompt": True,
+        }
+        if self.model_cfg.enable_thinking is not None:
+            template_kwargs["enable_thinking"] = self.model_cfg.enable_thinking
+
         text = self.processor.apply_chat_template(
             messages,
-            tokenize=False,
-            add_generation_prompt=True,
+            **template_kwargs,
         )
 
         inputs = self.processor(
             text=[text],
             images=images,
             return_tensors="pt",
-            truncation=False,
         )
 
         prepared: dict[str, torch.Tensor] = {}
@@ -103,7 +123,7 @@ class QwenVLRunner:
         prompt: str,
         images: list[Image.Image],
         choice_letters: list[str],
-        max_new_tokens: int = 128,
+        max_new_tokens: int = 512,
     ) -> PredictResult:
         inputs = self._prepare_inputs(prompt, images)
         pad_token_id = self.processor.tokenizer.eos_token_id
@@ -112,6 +132,7 @@ class QwenVLRunner:
                 **inputs,
                 max_new_tokens=max_new_tokens,
                 do_sample=False,
+                temperature=None,
                 pad_token_id=pad_token_id,
             )
 
@@ -137,7 +158,7 @@ class QwenVLRunner:
         temporal_hints: list[str] | None = None,
     ) -> PredictResult:
         if self.model is None or self.processor is None:
-            raise RuntimeError("Model must be loaded before predict")
+            raise RuntimeError("Model chua duoc load nen khong the predict")
 
         prompt = build_prompt(
             question=question,

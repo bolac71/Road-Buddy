@@ -23,6 +23,7 @@ class ModelConfig:
     device_map: str = "auto"
     torch_dtype: str = "bfloat16"
     attn_implementation: Optional[str] = None
+    enable_thinking: Optional[bool] = None
 
 
 @dataclass
@@ -38,6 +39,7 @@ class RuntimeConfig:
     seed: int = 42
     default_answer: str = "A"
     time_limit_sec: float = 30.0
+    max_samples: Optional[int] = 50
     checkpoint_every_n: int = 10
     print_every_n: int = 1
     batch_size: int = 1
@@ -107,6 +109,7 @@ def load_config(config_path: str) -> AppConfig:
             device_map=str(model.get("device_map", "auto")),
             torch_dtype=str(model.get("torch_dtype", "bfloat16")),
             attn_implementation=model.get("attn_implementation"),
+            enable_thinking=model.get("enable_thinking"),
         ),
         sampling=SamplingConfig(
             num_frames=int(sampling.get("num_frames", 10)),
@@ -118,6 +121,7 @@ def load_config(config_path: str) -> AppConfig:
             seed=int(runtime.get("seed", 42)),
             default_answer=str(runtime.get("default_answer", "A")),
             time_limit_sec=float(runtime.get("time_limit_sec", 30.0)),
+            max_samples=int(runtime["max_samples"]) if runtime.get("max_samples") is not None else None,
             checkpoint_every_n=int(runtime.get("checkpoint_every_n", 10)),
             print_every_n=int(runtime.get("print_every_n", 1)),
             batch_size=int(runtime.get("batch_size", 1)),

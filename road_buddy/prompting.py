@@ -53,6 +53,20 @@ def extract_choice_letters(choices: Iterable[str]) -> list[str]:
     return out
 
 
+def _strip_thinking_blocks(text: str) -> str:
+    """Tách phần answer thực sự từ output có thinking tags.
+
+    - Nếu có </think> → chỉ lấy text sau tag đó (phần answer).
+    - Nếu có <think> mà không có </think> → thinking bị truncate, trả về chuỗi rỗng.
+    - Nếu không có tag nào → trả về nguyên text.
+    """
+    if "</think>" in text:
+        return text.rsplit("</think>", 1)[-1].strip()
+    if "<think>" in text:
+        return ""
+    return text
+
+
 def extract_final_letter(text: str, allowed_letters: list[str]) -> str | None:
     if not text:
         return None
@@ -61,19 +75,22 @@ def extract_final_letter(text: str, allowed_letters: list[str]) -> str | None:
     if not allowed:
         return None
 
+    # Strip thinking blocks nếu model dùng thinking mode (Qwen3.5, DeepSeek, ...).
+    answer_text = _strip_thinking_blocks(text)
+
     # Prefer explicit forms such as "dap an: C" or "answer = B".
     explicit_pat = re.compile(
         r"(?:dap\s*an|đáp\s*án|answer)\s*[:\-]?\s*([A-D])\b",
         flags=re.IGNORECASE,
     )
-    explicit_matches = explicit_pat.findall(text)
+    explicit_matches = explicit_pat.findall(answer_text)
     if explicit_matches:
         letter = explicit_matches[-1].upper()
         if letter in allowed:
             return letter
 
-    # Fallback: pick the last standalone choice letter in model output.
-    standalone = re.findall(r"\b([A-D])\b", text, flags=re.IGNORECASE)
+    # Fallback: pick the last standalone choice letter in answer output.
+    standalone = re.findall(r"\b([A-D])\b", answer_text, flags=re.IGNORECASE)
     for token in reversed(standalone):
         letter = token.upper()
         if letter in allowed:

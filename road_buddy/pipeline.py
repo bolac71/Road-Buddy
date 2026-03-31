@@ -107,6 +107,9 @@ def run_inference(config: AppConfig) -> InferenceSummary:
     seed_everything(config.runtime.seed)
 
     dataset = load_dataset(config.paths.dataset_json)
+    if config.runtime.max_samples is not None:
+        dataset = dataset[: config.runtime.max_samples]
+        print(f"[INFO] max_samples={config.runtime.max_samples}: chay tren {len(dataset)} mau dau tien.", flush=True)
     answer_map = load_answer_map(config.paths.answer_json)
 
     model_runner = QwenVLRunner(config.model)
@@ -129,7 +132,7 @@ def run_inference(config: AppConfig) -> InferenceSummary:
     def _request_stop(signum: int, _frame: object) -> None:
         nonlocal stop_requested
         stop_requested = True
-        print(f"[WARN] Nhan tin hieu {signum}. Se dung mem va luu ket qua tam.", flush=True)
+        print(f"[WARN] Nhan tin hieu {signum}. Dang dung xu ly va luu ket qua.", flush=True)
 
     old_sigterm = signal.getsignal(signal.SIGTERM)
     old_sigint = signal.getsignal(signal.SIGINT)
@@ -380,7 +383,7 @@ def run_inference(config: AppConfig) -> InferenceSummary:
     p95_latency = sorted_lat[int(0.95 * (len(sorted_lat) - 1))] if sorted_lat else 0.0
 
     if interrupted:
-        print(f"[WARN] Infer bi dung som. Da luu ket qua cho {len(rows)}/{len(dataset)} mau.", flush=True)
+        print(f"[WARN] Inference stop sau khi xu ly {len(rows)}/{len(dataset)} samples.", flush=True)
         if eval_stats is not None:
             print(
                 f"[WARN] Partial eval: total={eval_stats.total} correct={eval_stats.correct} acc={eval_stats.accuracy:.6f}",
