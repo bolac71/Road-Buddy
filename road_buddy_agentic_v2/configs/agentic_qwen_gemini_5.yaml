@@ -1,0 +1,48 @@
+experiment_name: qwen_gemini_full_5
+
+dataset:
+  dataset_json: /home/cndt_khanhnd/data/road-buddy/datasets/public_test_with_type.json
+  video_root: /home/cndt_khanhnd/data/road-buddy/datasets
+  answer_json: /home/cndt_khanhnd/data/road-buddy/datasets/public_test/public_test_with_answers.json
+  take_first_n: 5
+  require_type_field: true
+
+qwen_reasoner:
+  enabled: true
+  provider: local_qwen
+  model_name: Qwen/Qwen3-VL-8B-Instruct
+  trust_remote_code: true
+  device_map: auto
+  torch_dtype: bfloat16
+  attn_implementation: null
+  enable_thinking: null
+  num_frames: 5
+  max_side: 768
+  query_aware_enabled: true
+  candidate_frame_multiplier: 2
+  system_hint: "Bạn là trợ lý AI cho bài toán giao thông Việt Nam. Chỉ chọn một đáp án đúng nhất theo video và câu hỏi."
+
+support_agent:
+  enabled: true
+  provider: gemini
+  model_name: gemini-2.5-flash
+  api_env_path: /home/cndt_khanhnd/data/road-buddy/.env
+  api_key_env_name: API_KEYS
+  mode: legal_brief_only
+  log_mode: full
+
+runtime:
+  seed: 42
+  max_samples: 5
+  checkpoint_every_n: 1
+  print_every_n: 1
+  time_limit_sec: 30.0
+  output_root: /datastore/cndt_khanhnd/road-buddy/outputs/full_qwen_gemini_5_fix
+
+outputs:
+  save_support_prompt: true
+  save_support_raw_output: true
+  save_support_brief: true
+  save_support_jsonl: true
+  save_run_summary: true
+  save_accuracy_by_type: true

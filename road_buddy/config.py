@@ -24,14 +24,20 @@ class ModelConfig:
     torch_dtype: str = "bfloat16"
     attn_implementation: Optional[str] = None
     enable_thinking: Optional[bool] = None
+    # Generation params — tuning theo từng model
+    do_sample: bool = False
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    top_k: Optional[int] = None
+    max_new_tokens: int = 512
+    thinking_budget_bias: Optional[float] = None  # logit bias cho </think> token (11.8/12.5/13.3)
 
 
 @dataclass
 class SamplingConfig:
     num_frames: int = 10
     max_side: int = 960
-    query_aware_enabled: bool = True
-    candidate_frame_multiplier: int = 3
+    sample_fps: float = 2.0
 
 
 @dataclass
@@ -110,12 +116,17 @@ def load_config(config_path: str) -> AppConfig:
             torch_dtype=str(model.get("torch_dtype", "bfloat16")),
             attn_implementation=model.get("attn_implementation"),
             enable_thinking=model.get("enable_thinking"),
+            do_sample=bool(model.get("do_sample", False)),
+            temperature=float(model["temperature"]) if model.get("temperature") is not None else None,
+            top_p=float(model["top_p"]) if model.get("top_p") is not None else None,
+            top_k=int(model["top_k"]) if model.get("top_k") is not None else None,
+            max_new_tokens=int(model.get("max_new_tokens", 512)),
+            thinking_budget_bias=float(model["thinking_budget_bias"]) if model.get("thinking_budget_bias") is not None else None,
         ),
         sampling=SamplingConfig(
             num_frames=int(sampling.get("num_frames", 10)),
             max_side=int(sampling.get("max_side", 960)),
-            query_aware_enabled=bool(sampling.get("query_aware_enabled", True)),
-            candidate_frame_multiplier=int(sampling.get("candidate_frame_multiplier", 3)),
+            sample_fps=float(sampling.get("sample_fps", 2.0)),
         ),
         runtime=RuntimeConfig(
             seed=int(runtime.get("seed", 42)),

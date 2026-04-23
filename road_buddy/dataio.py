@@ -45,6 +45,9 @@ def resolve_video_path(video_root: str, sample_video_path: str) -> str:
         alias_candidates.append((root / as_posix.replace("dataset/", "train/", 1)).resolve())
     if as_posix.startswith("train/"):
         alias_candidates.append((root / as_posix.replace("train/", "dataset/", 1)).resolve())
+    # Fallback: try under datasets/ subdirectory (e.g. when video_root points to
+    # the repo root but videos live under datasets/public_test/... or datasets/train/...).
+    alias_candidates.append((root / "datasets" / path).resolve())
 
     for candidate in alias_candidates:
         if candidate.exists():

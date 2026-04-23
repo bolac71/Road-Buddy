@@ -49,6 +49,7 @@ Thumbs.db
 outputs/
 logs/
 runs/
+open-source/
 
 # Model/cache artifacts
 .cache/
@@ -59,7 +60,12 @@ unsloth_compiled_cache/
 # Large local data and checkpoints
 datasets/**/videos/
 datasets/**/images/
+datasets/coco_val2014
+datasets/coco_train2014
 *.pt
 *.pth
 *.ckpt
 *.safetensors
+
+19-04-2026/vietnamese
+ocr-evaluation/vietnamese

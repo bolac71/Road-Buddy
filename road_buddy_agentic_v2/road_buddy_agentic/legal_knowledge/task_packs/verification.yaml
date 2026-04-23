@@ -1,0 +1,8 @@
+task_type: verification
+legal_topics:
+  - sign_groups
+  - lane_rules
+  - navigation_rules
+support_style:
+  - "Tách mệnh đề cần kiểm chứng."
+  - "Nêu điều kiện nào đúng thì phát biểu đúng, điều kiện nào sai thì phát biểu sai."

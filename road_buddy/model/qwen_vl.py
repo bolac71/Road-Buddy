@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import torch
 from PIL import Image
-from transformers import AutoModelForImageTextToText, AutoProcessor
+from transformers import AutoModelForImageTextToText, AutoProcessor, LogitsProcessor
 
 from road_buddy.config import ModelConfig
 from road_buddy.prompting import build_prompt, extract_final_letter
@@ -33,6 +33,30 @@ _DTYPE_MAP = {
     "float32": torch.float32,
     "fp32": torch.float32,
 }
+
+
+class _ThinkingBudgetProcessor(LogitsProcessor):
+    """Thêm logit bias dương vào token </think> để model kết thúc thinking sớm hơn
+      11.8 → cân bằng reasoning vs tốc độ
+      12.5 → ít reasoning hơn
+      13.3 → gần như tắt thinking (nhưng vẫn tốt hơn enable_thinking=False)
+    """
+
+    def __init__(self, end_think_token_id: int, bias: float) -> None:
+        self.token_id = end_think_token_id
+        self.bias = bias
+
+    def __call__(
+        self,
+        input_ids: torch.LongTensor,
+        scores: torch.FloatTensor,
+    ) -> torch.FloatTensor:
+        # Chỉ bias khi </think> CHƯA xuất hiện trong chuỗi.
+        # Sau khi model đã emit </think> một lần (đóng thinking block),
+        # dừng bias để model tự do generate câu trả lời.
+        already_closed = (input_ids == self.token_id).any(dim=-1)  # (batch,)
+        scores[~already_closed, self.token_id] += self.bias
+        return scores
 
 
 @dataclass
@@ -75,6 +99,21 @@ class QwenVLRunner:
         if getattr(self.processor, "image_processor", None) is None:
             raise RuntimeError(
                 "Model/processor hien tai khong ho tro dau vao anh-video. "
+            )
+
+        # Lookup token ID của </think> động từ tokenizer (không hardcode)
+        self._end_think_token_id: int | None = None
+        for candidate in ["</think>", "<|/think|>"]:
+            ids = self.processor.tokenizer.encode(candidate, add_special_tokens=False)
+            if len(ids) == 1:
+                self._end_think_token_id = ids[0]
+                logging.getLogger(__name__).info(
+                    f"</think> token id = {self._end_think_token_id} (từ '{candidate}')"
+                )
+                break
+        if self._end_think_token_id is None:
+            logging.getLogger(__name__).warning(
+                "Không tìm được </think> token id — thinking_budget_bias sẽ bị bỏ qua."
             )
 
     @property
@@ -123,18 +162,38 @@ class QwenVLRunner:
         prompt: str,
         images: list[Image.Image],
         choice_letters: list[str],
-        max_new_tokens: int = 512,
     ) -> PredictResult:
         inputs = self._prepare_inputs(prompt, images)
         pad_token_id = self.processor.tokenizer.eos_token_id
+
+        gen_kwargs: dict = {
+            "max_new_tokens": self.model_cfg.max_new_tokens,
+            "do_sample":      self.model_cfg.do_sample,
+            "pad_token_id":   pad_token_id,
+        }
+        if self.model_cfg.do_sample:
+            if self.model_cfg.temperature is not None:
+                gen_kwargs["temperature"] = self.model_cfg.temperature
+            if self.model_cfg.top_p is not None:
+                gen_kwargs["top_p"] = self.model_cfg.top_p
+            if self.model_cfg.top_k is not None:
+                gen_kwargs["top_k"] = self.model_cfg.top_k
+        else:
+            gen_kwargs["temperature"] = None  # tránh warning "not valid with greedy"
+        if (
+            self.model_cfg.enable_thinking
+            and self.model_cfg.thinking_budget_bias is not None
+            and self._end_think_token_id is not None
+        ):
+            gen_kwargs["logits_processor"] = [
+                _ThinkingBudgetProcessor(
+                    self._end_think_token_id,
+                    self.model_cfg.thinking_budget_bias,
+                )
+            ]
+
         with torch.no_grad():
-            output_ids = self.model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=False,
-                temperature=None,
-                pad_token_id=pad_token_id,
-            )
+            output_ids = self.model.generate(**inputs, **gen_kwargs)
 
         input_len = inputs["input_ids"].shape[-1]
         gen_ids = output_ids[:, input_len:]
@@ -154,8 +213,6 @@ class QwenVLRunner:
         choices: list[str],
         images: list[Image.Image],
         system_hint: str,
-        target_objects: list[str] | None = None,
-        temporal_hints: list[str] | None = None,
     ) -> PredictResult:
         if self.model is None or self.processor is None:
             raise RuntimeError("Model chua duoc load nen khong the predict")
@@ -164,8 +221,7 @@ class QwenVLRunner:
             question=question,
             choices=choices,
             system_hint=system_hint,
-            target_objects=target_objects,
-            temporal_hints=temporal_hints,
+            thinking_mode=bool(self.model_cfg.enable_thinking),
         )
         choice_letters = [c[0] for c in choices if c]
         return self._predict_generate(prompt, images, choice_letters)

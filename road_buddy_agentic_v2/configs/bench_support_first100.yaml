@@ -1,0 +1,41 @@
+experiment_name: bench_support_first100
+
+dataset:
+  dataset_json: /ABS/PATH/public_test_with_type.json
+  video_root: /ABS/PATH
+  answer_json: /ABS/PATH/public_test_answers.json
+  take_first_n: 100
+  require_type_field: true
+
+qwen_reasoner:
+  enabled: true
+  provider: local_qwen
+  model_name: Qwen/Qwen3-VL
+  num_frames: 10
+  max_side: 960
+  query_aware_enabled: true
+  candidate_frame_multiplier: 3
+
+benchmark:
+  support_runs:
+    - run_name: qwen_only
+      enabled: false
+      provider: none
+      model_name: none
+    - run_name: qwen_plus_gemini
+      enabled: true
+      provider: gemini
+      model_name: gemini-2.5-flash
+      api_env_path: /ABS/PATH/.env
+      api_key_env_name: API_KEYS
+    - run_name: qwen_plus_llama
+      enabled: true
+      provider: groq
+      model_name: meta-llama/llama-4-scout-17b-16e-instruct
+      api_env_path: /ABS/PATH/.env
+      api_key_env_name: GROQ_API_KEY
+
+runtime:
+  seed: 42
+  max_samples: 100
+  output_root: /ABS/PATH/outputs/bench_support_first100

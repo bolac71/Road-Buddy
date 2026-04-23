@@ -1,0 +1,5 @@
+task_type: object_presence
+legal_topics: []
+support_style:
+  - "Tập trung vào định nghĩa đối tượng cần tìm."
+  - "Không áp luật mạnh nếu câu hỏi chỉ yêu cầu có/không."

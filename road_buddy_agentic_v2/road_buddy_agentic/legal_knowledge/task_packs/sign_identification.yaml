@@ -1,0 +1,7 @@
+task_type: sign_identification
+legal_topics:
+  - sign_groups
+support_style:
+  - "Giải thích nhóm biển trong các lựa chọn."
+  - "Nêu dấu hiệu hình dạng, màu sắc, biểu tượng để Qwen đối chiếu."
+  - "Không kết luận đáp án cuối cùng."

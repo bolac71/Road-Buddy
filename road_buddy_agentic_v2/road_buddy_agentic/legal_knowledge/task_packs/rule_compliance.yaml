@@ -1,0 +1,7 @@
+task_type: rule_compliance
+legal_topics:
+  - lane_rules
+  - navigation_rules
+support_style:
+  - "Chuyển câu hỏi thành checklist: phương tiện nào, hành vi gì, làn nào, biển/vạch/đèn nào."
+  - "Không chọn A/B/C/D."

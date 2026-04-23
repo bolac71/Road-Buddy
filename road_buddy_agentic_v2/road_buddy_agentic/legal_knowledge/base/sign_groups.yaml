@@ -1,0 +1,14 @@
+topic: sign_groups
+entries:
+  - key: prohibitory_sign
+    description: "Biển báo cấm thường thuộc nhóm biển quy định điều cấm hoặc hạn chế."
+    visual_cues: ["hình tròn", "viền đỏ", "nền trắng hoặc ký hiệu đen/đỏ"]
+  - key: warning_sign
+    description: "Biển báo nguy hiểm/cảnh báo dùng để báo trước nguy cơ hoặc tình huống cần chú ý."
+    visual_cues: ["tam giác", "viền đỏ", "nền vàng hoặc trắng"]
+  - key: mandatory_sign
+    description: "Biển hiệu lệnh quy định hướng đi hoặc hành vi bắt buộc."
+    visual_cues: ["hình tròn", "nền xanh", "mũi tên hoặc biểu tượng trắng"]
+  - key: guide_sign
+    description: "Biển chỉ dẫn dùng để chỉ hướng, địa danh, khoảng cách hoặc thông tin tổ chức giao thông."
+    visual_cues: ["chữ nhật hoặc vuông", "nền xanh"]

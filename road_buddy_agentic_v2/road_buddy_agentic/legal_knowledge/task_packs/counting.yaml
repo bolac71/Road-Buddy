@@ -1,0 +1,6 @@
+task_type: counting
+legal_topics:
+  - sign_groups
+support_style:
+  - "Làm rõ đếm theo nhóm biển hay số lượng biển."
+  - "Nhắc có/không tính biển phụ tùy ngữ cảnh."

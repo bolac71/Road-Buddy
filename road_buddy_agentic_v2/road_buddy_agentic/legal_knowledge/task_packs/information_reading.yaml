@@ -1,0 +1,6 @@
+task_type: information_reading
+legal_topics:
+  - navigation_rules
+support_style:
+  - "Nhắc Qwen đọc số, đơn vị, khung giờ, khoảng cách, tải trọng, chiều cao."
+  - "Nhấn mạnh phạm vi áp dụng theo làn hoặc loại phương tiện."

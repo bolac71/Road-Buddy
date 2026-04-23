@@ -20,7 +20,7 @@ module load cuda12.8/toolkit/12.8.1
 REQUIRED_VRAM=24576
 REPO="/home/cndt_khanhnd/data/road-buddy"
 PYTHON="/datastore/cndt_khanhnd/miniconda3/envs/road_buddy/bin/python"
-CONFIG_PATH="$REPO/configs/baseline_qwen.yaml"
+CONFIG_PATH="${1:-$REPO/configs/baseline_qwen.yaml}"
 RUN_LOG_DIR="$REPO/logs/$SLURM_JOB_ID"
 RUN_OUTPUT_DIR="$REPO/outputs/$SLURM_JOB_ID"
 RUN_CONFIG_PATH="$RUN_OUTPUT_DIR/config_job_${SLURM_JOB_ID}.yaml"
@@ -62,6 +62,11 @@ echo "Run output dir: $RUN_OUTPUT_DIR"
 HF_TOKEN_FILE="/datastore/cndt_khanhnd/.hf_token"
 if [ -z "${HF_TOKEN:-}" ] && [ -f "${HF_TOKEN_FILE}" ]; then
   export HF_TOKEN="$(cat "${HF_TOKEN_FILE}")"
+fi
+
+# Load .env nếu tồn tại
+if [ -f "$REPO/.env" ]; then
+  set -a; source "$REPO/.env"; set +a
 fi
 
 # 6. KIỂM TRA FILE VÀ VÀO THƯ MỤC

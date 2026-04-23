@@ -1,0 +1,5 @@
+topic: navigation_rules
+entries:
+  - "Biển chỉ dẫn cần đọc theo hướng mũi tên, tên địa danh và khoảng cách."
+  - "Cần phân biệt thông tin cho hướng đi thẳng, rẽ trái, rẽ phải, quay đầu."
+  - "Nếu câu hỏi hỏi đến địa điểm đích, cần đối chiếu đúng hướng mũi tên và tên đích đến."

@@ -1,0 +1,43 @@
+paths:
+  dataset_json: ../datasets/public_test/public_test.json
+  video_root: ../datasets
+  output_csv: ../outputs/submission_qwen3vl.csv
+  answer_json: ../datasets/public_test/public_test_with_answers.json
+  audit_json: ../outputs/audit_qwen3vl.json
+
+model:
+  model_name_or_path: Qwen/Qwen3-VL-8B-Instruct
+  trust_remote_code: true
+  device_map: auto
+  torch_dtype: bfloat16
+  attn_implementation: null
+  enable_thinking: null
+  do_sample: false        # greedy — chuẩn cho VL instruct model
+  temperature: null
+  top_p: null
+  top_k: null
+  max_new_tokens: 512
+
+sampling:
+  num_frames: 10
+  max_side: 960
+  sample_fps: 2.0
+  query_aware_enabled: false
+  clip_enabled: false
+  candidate_frame_multiplier: 3
+  yolo_model_path: /home/cndt_khanhnd/data/road-buddy/yolo/road-lane/best.pt 
+  yolo_confidence: 0.25
+
+runtime:
+  seed: 42
+  default_answer: A
+  time_limit_sec: 30
+  max_samples: null
+  checkpoint_every_n: 5
+  print_every_n: 1
+  batch_size: 4
+  clear_cuda_cache_on_each_sample: true
+
+prompt:
+  system_hint: >-
+    Bạn là một trợ lý thông minh chuyên giải quyết các câu hỏi liên quan đến video. Bạn sẽ được cung cấp một video và một câu hỏi liên quan đến nội dung của video đó. Nhiệm vụ của bạn là phân tích thông tin thị giác trong video và trả lời câu hỏi dựa trên những gì bạn thấy. Bạn chỉ cần trả lời bằng một ký tự duy nhất, đó là đáp án đúng nhất cho câu hỏi đã cho. Hãy tập trung vào việc hiểu nội dung của video và chọn đáp án chính xác nhất dựa trên thông tin đó.

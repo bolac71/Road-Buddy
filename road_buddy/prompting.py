@@ -7,12 +7,19 @@ from typing import Iterable
 _PROMPT_TEMPLATE = (
     "{system_hint}\n\n"
     "Dựa trên các khung hình trích từ video dashcam, hãy trả lời câu hỏi trắc nghiệm sau.\n"
-    "Chỉ được chọn DUY NHẤT một đáp án đúng nhất.\n\n"
+    "Chỉ được chọn DUY NHẤT một đáp án đúng nhất. "
+    "Hãy phân tích kỹ nội dung video trước khi chọn, không thiên vị về vị trí đáp án.\n\n"
     "{query_context}"
+    "{thinking_hint}"
     "Câu hỏi: {question}\n\n"
     "Lựa chọn:\n{choices}\n\n"
     "Bắt buộc: dòng đầu tiên chỉ được ghi DUY NHẤT một ký tự in hoa A/B/C/D, không giải thích.\n"
     "Ví dụ hợp lệ: A"
+)
+
+_THINKING_HINT = (
+    "Trong phần suy nghĩ, hãy kết thúc bằng dòng 'Đáp án: X' "
+    "(X là chữ cái A/B/C/D bạn chọn) trước khi đóng thẻ </think>.\n\n"
 )
 
 
@@ -20,23 +27,13 @@ def build_prompt(
     question: str,
     choices: Iterable[str],
     system_hint: str,
-    target_objects: list[str] | None = None,
-    temporal_hints: list[str] | None = None,
+    thinking_mode: bool = False,
 ) -> str:
     choices_text = "\n".join(str(c) for c in choices)
-    context_parts: list[str] = []
-    if target_objects:
-        context_parts.append(f"Đối tượng cần chú ý: {', '.join(target_objects)}")
-    if temporal_hints:
-        context_parts.append(f"Gợi ý thời điểm quan sát: {', '.join(temporal_hints)}")
-
-    query_context = ""
-    if context_parts:
-        query_context = "Thông tin bổ sung:\n" + "\n".join(context_parts) + "\n\n"
-
     return _PROMPT_TEMPLATE.format(
         system_hint=system_hint,
-        query_context=query_context,
+        query_context="",
+        thinking_hint=_THINKING_HINT if thinking_mode else "",
         question=question,
         choices=choices_text,
     )
@@ -53,18 +50,23 @@ def extract_choice_letters(choices: Iterable[str]) -> list[str]:
     return out
 
 
-def _strip_thinking_blocks(text: str) -> str:
-    """Tách phần answer thực sự từ output có thinking tags.
+_EXPLICIT_PAT = re.compile(
+    r"(?:dap\s*an|đáp\s*án|answer|chọn|chon)\s*[:\-=]?\s*([A-D])\b",
+    flags=re.IGNORECASE,
+)
 
-    - Nếu có </think> → chỉ lấy text sau tag đó (phần answer).
-    - Nếu có <think> mà không có </think> → thinking bị truncate, trả về chuỗi rỗng.
-    - Nếu không có tag nào → trả về nguyên text.
-    """
-    if "</think>" in text:
-        return text.rsplit("</think>", 1)[-1].strip()
-    if "<think>" in text:
-        return ""
-    return text
+
+def _search_letter(text: str, allowed: list[str]) -> str | None:
+    """Tìm đáp án trong đoạn text: ưu tiên explicit pattern, fallback standalone letter."""
+    if not text:
+        return None
+    for m in reversed(_EXPLICIT_PAT.findall(text)):
+        if m.upper() in allowed:
+            return m.upper()
+    for tok in reversed(re.findall(r"\b([A-D])\b", text, flags=re.IGNORECASE)):
+        if tok.upper() in allowed:
+            return tok.upper()
+    return None
 
 
 def extract_final_letter(text: str, allowed_letters: list[str]) -> str | None:
@@ -75,25 +77,49 @@ def extract_final_letter(text: str, allowed_letters: list[str]) -> str | None:
     if not allowed:
         return None
 
-    # Strip thinking blocks nếu model dùng thinking mode (Qwen3.5, DeepSeek, ...).
-    answer_text = _strip_thinking_blocks(text)
+    # Tách thinking block khỏi phần answer.
+    think_content = ""
+    if "</think>" in text:
+        before, after = text.rsplit("</think>", 1)
+        answer_text = after.strip()
+        # Lấy nội dung bên trong <think>...</think> để dùng làm fallback.
+        think_content = before.split("<think>", 1)[-1].strip() if "<think>" in before else before.strip()
+    elif "<think>" in text:
+        # Thinking bị truncate — không có </think>
+        answer_text = ""
+        think_content = text.split("<think>", 1)[1].strip()
+    else:
+        answer_text = text
+        think_content = ""
 
-    # Prefer explicit forms such as "dap an: C" or "answer = B".
-    explicit_pat = re.compile(
-        r"(?:dap\s*an|đáp\s*án|answer)\s*[:\-]?\s*([A-D])\b",
-        flags=re.IGNORECASE,
-    )
-    explicit_matches = explicit_pat.findall(answer_text)
-    if explicit_matches:
-        letter = explicit_matches[-1].upper()
-        if letter in allowed:
-            return letter
+    # Priority 1: tìm trong phần answer (sau </think>).
+    result = _search_letter(answer_text, allowed)
+    if result:
+        return result
 
-    # Fallback: pick the last standalone choice letter in answer output.
-    standalone = re.findall(r"\b([A-D])\b", answer_text, flags=re.IGNORECASE)
-    for token in reversed(standalone):
-        letter = token.upper()
-        if letter in allowed:
-            return letter
+    # Priority 2: tìm "Đáp án: X" trong thinking (dòng cam kết mà prompt yêu cầu).
+    # Dùng explicit pattern trước để tránh false positive từ letters trong lúc phân tích.
+    if think_content:
+        for m in reversed(_EXPLICIT_PAT.findall(think_content)):
+            if m.upper() in allowed:
+                return m.upper()
+
+    # Priority 3: last standalone letter trong thinking (kém tin cậy nhất, hơn fallback A).
+    if think_content:
+        for tok in reversed(re.findall(r"\b([A-D])\b", think_content, flags=re.IGNORECASE)):
+            if tok.upper() in allowed:
+                return tok.upper()
+
+    # Priority 4: binary heuristic cho câu Đúng/Sai (chỉ 2 lựa chọn).
+    # Model có thể trả về "Đúng"/"Sai" thay vì "A"/"B".
+    if len(allowed) == 2:
+        full_text = (answer_text + " " + think_content).lower()
+        _YES = ("đúng", "có", "phải", "yes", "true", "correct", "right")
+        _NO = ("sai", "không", "không phải", "no", "false", "wrong", "incorrect")
+        yes_hits = sum(1 for w in _YES if w in full_text)
+        no_hits = sum(1 for w in _NO if w in full_text)
+        if yes_hits != no_hits:
+            # Map về đúng letter: lựa chọn đầu tiên thường là "Đúng", thứ hai là "Sai"
+            return allowed[0] if yes_hits > no_hits else allowed[1]
 
     return None

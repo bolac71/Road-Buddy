@@ -128,7 +128,7 @@ Output: `report.md`, `summary.json`, and 5 figures (accuracy by intent, confusio
 ### 5. Run on HPC cluster (SLURM)
 
 ```bash
-sbatch scripts/run_baseline.slurm
+sbatch scripts/run_baseline.slurm configs/baseline_qwen.yaml
 # Logs  → logs/<SLURM_JOB_ID>/job.{out,err}
 # Output → outputs/<SLURM_JOB_ID>/{submission.csv,audit.json}
 ```
