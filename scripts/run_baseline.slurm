@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=24G
-#SBATCH --gres=mps:l40:1
+#SBATCH --gres=mps:a100:1
 #SBATCH --time=06:00:00
 
 set -euo pipefail
@@ -20,7 +20,7 @@ module load cuda12.8/toolkit/12.8.1
 REQUIRED_VRAM=24576
 REPO="/home/cndt_khanhnd/data/road-buddy"
 PYTHON="/datastore/cndt_khanhnd/miniconda3/envs/road_buddy/bin/python"
-CONFIG_PATH="${1:-$REPO/configs/baseline_qwen.yaml}"
+CONFIG_PATH="${1:-$REPO/configs/qwen3vl_heuristic.yaml}"
 RUN_LOG_DIR="$REPO/logs/$SLURM_JOB_ID"
 RUN_OUTPUT_DIR="$REPO/outputs/$SLURM_JOB_ID"
 RUN_CONFIG_PATH="$RUN_OUTPUT_DIR/config_job_${SLURM_JOB_ID}.yaml"

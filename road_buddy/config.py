@@ -37,7 +37,7 @@ class ModelConfig:
 class SamplingConfig:
     num_frames: int = 10
     max_side: int = 960
-    sample_fps: float = 2.0
+    use_heuristic: bool = False
 
 
 @dataclass
@@ -126,7 +126,7 @@ def load_config(config_path: str) -> AppConfig:
         sampling=SamplingConfig(
             num_frames=int(sampling.get("num_frames", 10)),
             max_side=int(sampling.get("max_side", 960)),
-            sample_fps=float(sampling.get("sample_fps", 2.0)),
+            use_heuristic=bool(sampling.get("use_heuristic", False)),
         ),
         runtime=RuntimeConfig(
             seed=int(runtime.get("seed", 42)),

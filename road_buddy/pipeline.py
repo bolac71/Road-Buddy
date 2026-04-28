@@ -23,6 +23,7 @@ from road_buddy.dataio import (
 )
 from road_buddy.model.qwen_vl import QwenVLRunner
 from road_buddy.prompting import extract_choice_letters
+from road_buddy.heuristic_video import sample_frames_heuristic
 from road_buddy.video import sample_video_frames
 
 
@@ -278,12 +279,19 @@ def run_inference(config: AppConfig) -> InferenceSummary:
 
             video_abs = resolve_video_path(config.paths.video_root, video_rel)
             try:
-                selected_images = sample_video_frames(
-                    video_abs,
-                    num_frames=config.sampling.num_frames,
-                    max_side=config.sampling.max_side,
-                    sample_fps=config.sampling.sample_fps,
-                )
+                if config.sampling.use_heuristic:
+                    selected_images = sample_frames_heuristic(
+                        video_abs,
+                        question=question,
+                        num_frames=config.sampling.num_frames,
+                        max_side=config.sampling.max_side,
+                    )
+                else:
+                    selected_images = sample_video_frames(
+                        video_abs,
+                        num_frames=config.sampling.num_frames,
+                        max_side=config.sampling.max_side,
+                    )
                 if not selected_images:
                     raise ValueError("no_frames_from_video")
                 selected_indices = list(range(len(selected_images)))

@@ -21,12 +21,7 @@ model:
 sampling:
   num_frames: 10
   max_side: 960
-  sample_fps: 2.0
-  query_aware_enabled: true
-  clip_enabled: true
-  candidate_frame_multiplier: 3
-  yolo_model_path: null   # đặt path tới best.pt sau khi train xong trên Colab
-  yolo_confidence: 0.25
+  use_heuristic: false
 
 runtime:
   seed: 42

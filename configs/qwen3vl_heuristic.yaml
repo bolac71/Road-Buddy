@@ -1,9 +1,9 @@
 paths:
   dataset_json: ../datasets/public_test/public_test.json
   video_root: ../datasets
-  output_csv: ../outputs/submission_qwen3vl.csv
+  output_csv: ../outputs/submission_qwen3vl_heuristic.csv
   answer_json: ../datasets/public_test/public_test_with_answers.json
-  audit_json: ../outputs/audit_qwen3vl.json
+  audit_json: ../outputs/audit_qwen3vl_heuristic.json
 
 model:
   model_name_or_path: Qwen/Qwen3-VL-8B-Instruct
@@ -11,8 +11,8 @@ model:
   device_map: auto
   torch_dtype: bfloat16
   attn_implementation: null
-  enable_thinking: false
-  do_sample: false        # greedy — chuẩn cho VL instruct model
+  enable_thinking: null
+  do_sample: false
   temperature: null
   top_p: null
   top_k: null
@@ -21,7 +21,7 @@ model:
 sampling:
   num_frames: 10
   max_side: 960
-  use_heuristic: false
+  use_heuristic: true   # bật heuristic keyframe selector
 
 runtime:
   seed: 42

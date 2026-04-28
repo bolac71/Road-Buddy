@@ -57,7 +57,6 @@ def sample_video_frames(
     video_path: str,
     num_frames: int,
     max_side: int,
-    sample_fps: float = 2.0,
 ) -> list[Image.Image]:
     frames = extract_frames_from_video(video_path, max_frames=num_frames)
     if not frames:
